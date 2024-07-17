@@ -4,14 +4,31 @@
 // self mods
 
 // use other mods
+use core::iter::Iterator;
 use enum_group::EnumGroup;
 
 // use self mods
 use crate::error::LibError;
 
-pub const SIG_COUNT: usize = 32;
+const SIG_COUNT: usize = 32;
 
-#[derive(Clone, Copy, EnumGroup, Debug)]
+pub struct SignalIterator {
+    offset: usize,
+}
+impl Iterator for SignalIterator {
+    type Item = Signal;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.offset >= SIG_COUNT {
+            None
+        } else {
+            let item: Signal = self.offset.try_into().unwrap();
+            self.offset += 1;
+            Some(item)
+        }
+    }
+}
+
+#[derive(Clone, Copy, EnumGroup, Debug, PartialEq, Eq)]
 pub enum Signal {
     DEF = 0,
     HUP = 1,
@@ -86,6 +103,11 @@ impl TryFrom<usize> for Signal {
         }
     }
 }
+impl Signal {
+    pub fn iter() -> SignalIterator {
+        SignalIterator { offset: 0 }
+    }
+}
 
 bitflags! {
     #[derive(Clone, Copy, PartialEq, Debug)]
@@ -126,7 +148,7 @@ bitflags! {
 }
 impl SignalFlags {
     pub fn trunc(&self) -> Signal {
-        (self.bits().trailing_ones() as usize).try_into().unwrap()
+        (self.bits().trailing_zeros() as usize).try_into().unwrap()
     }
 }
 impl From<Signal> for SignalFlags {
@@ -180,4 +202,27 @@ impl SingalTable {
     pub fn set(&mut self, index: usize, action: SignalAction) {
         self.inner[index] = action;
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_signal_flags_trunc() {
+        for value in 0..SIG_COUNT {
+            let signal: Signal = value.try_into().unwrap();
+            let flags: SignalFlags = signal.into();
+            assert_eq!(signal, flags.trunc())
+        }
+    }
+
+    #[test]
+    fn test_signal_iterator() {
+        for signal in Signal::iter() {
+            continue;
+        }
+    }
+
+    
 }
